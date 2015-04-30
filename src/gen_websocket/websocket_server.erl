@@ -8,14 +8,14 @@
 
 
 start(ListenSocket, DispatcherName) ->
-    spawn(fun() -> acceptor(ListenSocket, DispatcherName)).
+    spawn(fun() -> acceptor(ListenSocket, DispatcherName) end).
 
 
 
 %% internal functions
 acceptor(ListenSocket, DispatcherName) ->
     {ok, Socket} = gen_tcp:accept(ListenSocket),
-    gen_websocket:create_new_acceptor(DispatcherName),
+    dispatcher:create_new_acceptor(DispatcherName),
     shake_hand(Socket).
 
 
