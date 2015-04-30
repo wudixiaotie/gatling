@@ -1,0 +1,9 @@
+{application,gatling,
+             [{description,[]},
+              {vsn,"1"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {mod,{gatling_app,[]}},
+              {env,[{port,1987}]},
+              {modules,[gatling,gatling_app,gatling_sup,gen_websocket,
+                        gen_websocket_sup,websocket_server]}]}.
