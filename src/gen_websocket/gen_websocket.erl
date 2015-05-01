@@ -1,7 +1,7 @@
 -module (gen_websocket).
 
--export ([start_link/2]).
+-export ([start_link/3]).
 
-
-start_link(ListenSocket, DispatcherName) ->
-    dispatcher:start_link(ListenSocket, DispatcherName).
+% @spec start_link(Module, ListenSocket, DispatcherName) -> {ok, Pid} | {error, Reason}
+start_link(Module, ListenSocket, DispatcherName) ->
+    dispatcher:start_link(Module, ListenSocket, DispatcherName).

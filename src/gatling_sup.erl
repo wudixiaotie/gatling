@@ -31,8 +31,8 @@ init([ListenSocket]) ->
     {ok, {
           {one_for_one, 5, 10},
           [
-            ?CHILD(gen_websocket_worker1, gen_websocket, ListenSocket, worker),
-            ?CHILD(gen_websocket_worker2, gen_websocket, ListenSocket, worker),
-            ?CHILD(gen_websocket_worker3, gen_websocket, ListenSocket, worker)
+            ?CHILD(gen_websocket_worker1, gatling, ListenSocket, worker),
+            ?CHILD(gen_websocket_worker2, gatling, ListenSocket, worker),
+            ?CHILD(gen_websocket_worker3, gatling, ListenSocket, worker)
           ]
          } }.

@@ -3,23 +3,29 @@
 % 如果gen_server进程数量过多的化，会占用过多的atom,
 % 而在一个 Erlang 节点内，atom 表是全局共享的,总数大概是1048576（1024×1024）个，
 % 而且GC不会回收atom,
--export ([start/2]).
+-export ([start/3, send_data/2]).
 
 
 
-start(ListenSocket, DispatcherName) ->
-    spawn(fun() -> acceptor(ListenSocket, DispatcherName) end).
+start(Module, ListenSocket, DispatcherName) ->
+    spawn(fun() -> acceptor(Module, ListenSocket, DispatcherName) end).
+
+
+% @spec send_data(WebsocketSocket, Data) -> ok | {error, Reason}
+send_data(WebsocketSocket, Data) ->
+    Frame = build_frame(Data),
+    gen_tcp:send(WebsocketSocket, Frame).
 
 
 
 %% internal functions
-acceptor(ListenSocket, DispatcherName) ->
+acceptor(Module, ListenSocket, DispatcherName) ->
     {ok, Socket} = gen_tcp:accept(ListenSocket),
     dispatcher:create_new_acceptor(DispatcherName),
-    shake_hand(Socket).
+    shake_hand(Module, Socket).
 
 
-shake_hand(Socket) ->
+shake_hand(Module, Socket) ->
     receive
         {tcp, Socket, Bin} ->
             io:format("receive_request received binary = ~p~n", [Bin]),
@@ -36,36 +42,35 @@ shake_hand(Socket) ->
                 <<"\r\n">>
             ],
             gen_tcp:send(Socket, HandshakeHeader),
-            frame_handler(Socket);
+            frame_handler(Module, Socket);
         Any ->
             io:format("receive_request received non_tcp: ~p.~n", [Any])
     end.
 
 
-frame_handler(WebsocketSocket) ->
+frame_handler(Module, WebsocketSocket) ->
     receive
         {tcp, WebsocketSocket, FirstPacket} ->
-            handle_data(FirstPacket, WebsocketSocket),
-            frame_handler(WebsocketSocket);
+            handle_data(Module, FirstPacket, WebsocketSocket),
+            frame_handler(Module, WebsocketSocket);
         {tcp_closed, WebsocketSocket} ->
             gen_tcp:close(WebsocketSocket);
         Any ->
             io:format("websocket_handler received non_tcp:~p~n", [Any]),
-            frame_handler(WebsocketSocket)
+            frame_handler(Module, WebsocketSocket)
     end.
 
 
-handle_data(FirstPacket, WebsocketSocket) ->
+handle_data(Module, FirstPacket, WebsocketSocket) ->
     {payload_original_data, PayloadOriginalData, next_packet_data, NextPacketData} = extract_payload_original_data(FirstPacket, WebsocketSocket),
     case unicode:characters_to_list(PayloadOriginalData) of
         {incomplete, _, _} ->
             gen_tcp:close(WebsocketSocket);
         PayloadContent ->
-            Frame = build_frame(PayloadContent),
-            gen_tcp:send(WebsocketSocket, Frame),
+            Module:handle_data(WebsocketSocket, PayloadContent),
             case size(NextPacketData) of
-                0 -> frame_handler(WebsocketSocket);
-                _Other -> handle_data(NextPacketData, WebsocketSocket)
+                0 -> ok;
+                _Other -> handle_data(Module, NextPacketData, WebsocketSocket)
             end
     end.
 
