@@ -67,7 +67,7 @@ handle_data(Module, FirstPacket, WebsocketSocket) ->
         {incomplete, _, _} ->
             gen_tcp:close(WebsocketSocket);
         PayloadContent ->
-            Module:handle_data(WebsocketSocket, PayloadContent),
+            Module:handle_request(WebsocketSocket, PayloadContent),
             case size(NextPacketData) of
                 0 -> ok;
                 _Other -> handle_data(Module, NextPacketData, WebsocketSocket)
