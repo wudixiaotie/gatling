@@ -4,7 +4,7 @@
 
 -compile (export_all).
 
-%% @spec handle_data(WebsocketSocket, PayloadContent) -> ok
+%% @spec handle_data(WebsocketSocket, PayloadContent) -> ok | {error, Reason}
 handle_data(WebsocketSocket, PayloadContent) ->
-    ok = websocket_server:send_data(WebsocketSocket, PayloadContent),
+    ok = gen_websocket:send(WebsocketSocket, PayloadContent),
     ok.
