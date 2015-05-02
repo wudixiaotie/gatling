@@ -10,7 +10,8 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    ListenSocket = gatling:listen(),
+    Port = gatling:get_env(port),
+    ListenSocket = gen_websocket:listen(Port),
     gatling_sup:start_link(ListenSocket).
 
 stop(_State) ->
