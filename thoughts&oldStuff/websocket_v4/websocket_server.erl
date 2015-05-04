@@ -1,42 +1,20 @@
 -module (websocket_server).
-
--behaviour (gen_server).
-
+% 之所以不用gen_server是因为gen_server需要每个进程都要有单独的ServerName,
+% 如果gen_server进程数量过多的化，会占用过多的atom,
+% 而在一个 Erlang 节点内，atom 表是全局共享的,总数大概是1048576（1024×1024）个，
+% 而且GC不会回收atom,
 -export ([start/3, send_data/2]).
 
--export ([init/1, handle_call/3, handle_cast/2, handle_info/2,
-          terminate/2, code_change/3]).
-
--record (state, {module, listen_socket, dispatcher_name}).
 
 
-
-
-%% APIs
 start(Module, ListenSocket, DispatcherName) ->
-    gen_server:start({global, {DispatcherName, random:seed()}}, ?MODULE,
-                    [Module, ListenSocket, DispatcherName], []).
+    spawn(fun() -> acceptor(Module, ListenSocket, DispatcherName) end).
 
 
 % @spec send_data(WebsocketSocket, Data) -> ok | {error, Reason}
 send_data(WebsocketSocket, Data) ->
     Frame = build_frame(Data),
     gen_tcp:send(WebsocketSocket, Frame).
-
-
-
-%% gen_server callbacks
-init([]) ->
-    {ok, []}.
-
-handle_call(_Request, _From, State) ->
-    {reply, 111, State}.
-
-
-handle_cast(_Msg, State) -> {noreply, State}.
-handle_info(_info, State) -> {noreply, State}.
-terminate(_Reason, _Status) -> ok.
-code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 
 
@@ -51,9 +29,9 @@ shake_hand(Module, Socket) ->
     receive
         {tcp, Socket, Bin} ->
             io:format("request header = ~p~n", [Bin]),
+            io:format("request Socket = ~p~n", [Socket]),
             HeaderList = binary:split(Bin, <<"\r\n">>, [global]),
             HeaderTupleList = [ list_to_tuple(binary:split(Header, <<": ">>)) || Header <- HeaderList ],
-            io:format("header tuple is ~p~n", [HeaderTupleList]),
             {_, SecWebSocketKey} = lists:keyfind(<<"Sec-WebSocket-Key">>, 1, HeaderTupleList),
             Sha1 = crypto:hash(sha, [SecWebSocketKey, <<"258EAFA5-E914-47DA-95CA-C5AB0DC85B11">>]),
             Base64 = base64:encode(Sha1),

@@ -9,11 +9,12 @@
 
 %% APIs
 start_link() ->
-    % gen_server:start_link({local, ServerName}, ?MODULE, [], []).
-    gen_server:start_link({global, 123}, ?MODULE, [], []).
+    gen_server:start_link({local, aaa}, ?MODULE, [], []).
+    % gen_server:start_link({global, 123}, ?MODULE, [], []).
 
 show(Name) ->
-    gen_server:call({global, 123}, {show, Name}).
+    % gen_server:call({global, 123}, {show, Name}).
+    gen_server:call(aaa, {show, Name}).
 
 
 % gen_server callbacks
@@ -25,6 +26,8 @@ handle_call(_Request, _From, State) ->
 
 
 handle_cast(_Msg, State) -> {noreply, State}.
-handle_info(_info, State) -> {noreply, State}.
+handle_info(_info, State) ->
+    io:format("got info:~p~n", [_info]),
+    {noreply, State}.
 terminate(_Reason, _Status) -> ok.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
