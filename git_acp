@@ -1,4 +1,11 @@
 #!/bin/sh
+
+if [ -n "$1" ] ;then
+  note=$1
+else
+  note="update"
+fi
+
 git add -A
-git commit -m "another way to send data to client"
+git commit -m "$note"
 git push -u origin master
