@@ -1,6 +1,6 @@
 -module (gen_websocket).
 
--export ([start_link/3, listen/1, send/2]).
+-export ([start_link/3, listen/1, send/2, get_header/1]).
 
 % @spec start_link(Module, ListenSocket, DispatcherName) -> {ok, Pid} | {error, Reason}
 start_link(Module, ListenSocket, DispatcherName) ->
@@ -20,3 +20,7 @@ listen(Port) ->
 %% @spec send(WebsocketSocket, Data) -> ok | {error, Reason}
 send(WebsocketSocket, Data) ->
     websocket_server:send_data(WebsocketSocket, Data).
+
+
+get_header(ServerName) ->
+    websocket_server:get_header(ServerName).

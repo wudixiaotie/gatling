@@ -2,7 +2,7 @@
 
 -behaviour (gen_server).
 
--export ([start/3, send_data/2]).
+-export ([start/3, send_data/2, get_header/1]).
 
 -export ([init/1, handle_call/3, handle_cast/2, handle_info/2,
           terminate/2, code_change/3]).
@@ -23,6 +23,10 @@ send_data(WebsocketSocket, Data) ->
     gen_tcp:send(WebsocketSocket, Frame).
 
 
+get_header(ServerName) ->
+    gen_server:call(ServerName, get_header).
+
+
 
 %% gen_server callbacks
 % init([Module, ListenSocket, DispatcherName]) -> {ok, State} | {stop, atom}
@@ -33,8 +37,8 @@ init([Module, ListenSocket, DispatcherName]) ->
     shake_hand(Module, Socket).
 
 
-handle_call(_Request, _From, State) ->
-    {reply, 111, State}.
+handle_call(get_header, _From, #state{ header_tuple_list = HeaderTupleList } = State) ->
+    {reply, HeaderTupleList, State}.
 
 
 handle_cast(_Msg, State) -> {noreply, State}.
