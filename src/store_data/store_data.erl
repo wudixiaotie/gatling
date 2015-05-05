@@ -4,9 +4,9 @@
 
 -compile (export_all).
 
-%% @spec handle_request(WebsocketSocket, PayloadContent) -> ok | {error, Reason}
-handle_request(WebsocketSocket, PayloadContent) ->
+%% @spec handle_request(ServerName, PayloadContent) -> ok | {error, Reason}
+handle_request(ServerName, PayloadContent) ->
     Header = gen_websocket:get_header(self()),
-    io:format("~p~n", [Header]),
-    ok = gen_websocket:send(WebsocketSocket, PayloadContent),
+    % io:format("~p~n", [Header]),
+    ok = gen_websocket:send(ServerName, Header),
     ok.

@@ -7,27 +7,23 @@
 -export ([init/1, handle_call/3, handle_cast/2, handle_info/2,
           terminate/2, code_change/3]).
 
--record (state, {listen_socket, websocket_socket, header_tuple_list, module}).
+-record (state, {server_name, websocket_socket, header_tuple_list, module}).
 
 
 
 
 %% APIs
 start(Module, ListenSocket, DispatcherName) ->
-    spawn(fun() -> gen_server:start({global, uuid:create()},
+    ServerName = {global, uuid:create()},
+    spawn(fun() -> gen_server:start(ServerName,
                                     ?MODULE,
-                                    [Module, ListenSocket, DispatcherName],
+                                    [Module, ListenSocket, DispatcherName, ServerName],
                                     []) end).
 
 
-% @spec send_data({websocket, WebsocketSocket}, Data) -> ok | {stop, Reason}
-send_data({websocket, WebsocketSocket}, Data) ->
-    Frame = build_frame(Data),
-    gen_tcp:send(WebsocketSocket, Frame);
-% @spec send_data({server_name, ServerName}, Data) -> ok | {stop, Reason}
-send_data({server_name, ServerName}, Data) ->
-    Frame = build_frame(Data),
-    gen_tcp:send(WebsocketSocket, Frame).
+% @spec send_data(ServerName, Data) -> ok | {stop, Reason}
+send_data(ServerName, Data) ->
+    gen_server:call(ServerName, {send_data, Data}).
 
 
 get_header(ServerName) ->
@@ -37,25 +33,33 @@ get_header(ServerName) ->
 
 %% gen_server callbacks
 % init([Module, ListenSocket, DispatcherName]) -> {ok, State} | {stop, atom}
-init([Module, ListenSocket, DispatcherName]) ->
-    io:format("start an new websocket server:~p~n", [self()]),
+init([Module, ListenSocket, DispatcherName, ServerName]) ->
+    io:format("start an new websocket server:~p~n", [ServerName]),
     {ok, Socket} = gen_tcp:accept(ListenSocket),
     dispatcher:create_new_acceptor(DispatcherName),
-    shake_hand(Module, Socket).
+    State = #state{ websocket_socket = Socket,
+                    server_name = ServerName,
+                    module = Module },
+    shake_hand(State).
 
 
-handle_call(get_header, _From, #state{ header_tuple_list = HeaderTupleList } = State) ->
+handle_call(get_header, _From, #state{header_tuple_list = HeaderTupleList} = State) ->
     {reply, HeaderTupleList, State};
-handle_call({send_date, Data}, _Form, #state{ websocket_socket = WebsocketSocket } = State) ->
-    Frame = build_frame(Data),
-    gen_tcp:send(WebsocketSocket, Frame).
+handle_call({send_data, Data}, _Form, #state{websocket_socket = WebsocketSocket} = State) ->
+    FunSendData = fun() ->
+                    Frame = build_frame(Data),
+                    gen_tcp:send(WebsocketSocket, Frame)
+                  end,
+    spawn(FunSendData),
+    {reply, ok, State}.
 
 
 handle_cast(_Msg, State) -> {noreply, State}.
 
 
-handle_info({tcp, WebsocketSocket, FirstPacket}, #state{module = Module} = State) ->
-    handle_data(Module, FirstPacket, WebsocketSocket),
+handle_info({tcp, WebsocketSocket, FirstPacket},
+            #state{server_name = ServerName, module = Module} = State) ->
+    spawn(fun() -> handle_data(ServerName, Module, FirstPacket, WebsocketSocket) end),
     {noreply, State};
 handle_info({tcp_closed, WebsocketSocket}, State) ->
     io:format("websocket_server ~p stop!~n", [self()]),
@@ -73,7 +77,7 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 %% internal functions
 % shake_hand(Module, Socket) -> {ok, State} | {stop, atom}
-shake_hand(Module, Socket) ->
+shake_hand(#state{websocket_socket = Socket} = State) ->
     receive
         {tcp, Socket, Bin} ->
             io:format("request header = ~p~n", [Bin]),
@@ -90,27 +94,25 @@ shake_hand(Module, Socket) ->
                 <<"\r\n">>
             ],
             ok = gen_tcp:send(Socket, HandshakeHeader),
-            State = #state{ websocket_socket = Socket,
-                            header_tuple_list = HeaderTupleList,
-                            module = Module },
-            {ok, State};
+            NewState = State#state{header_tuple_list = HeaderTupleList},
+            {ok, NewState};
         Any ->
             io:format("request received non_tcp: ~p.~n", [Any]),
             {stop, non_tcp_request}
     end.
 
 
-handle_data(Module, FirstPacket, WebsocketSocket) ->
+handle_data(ServerName, Module, FirstPacket, WebsocketSocket) ->
     {payload_original_data, PayloadOriginalData, next_packet_data, NextPacketData} = extract_payload_original_data(FirstPacket, WebsocketSocket),
     case unicode:characters_to_list(PayloadOriginalData) of
         {incomplete, _, _} ->
             gen_tcp:close(WebsocketSocket);
         PayloadContent ->
-            io:format("websocket_server ~p received data:~p~n", [self(), PayloadContent]),
-            Module:handle_request(WebsocketSocket, PayloadContent),
+            io:format("websocket_server ~p received data:~p~n", [ServerName, PayloadContent]),
+            Module:handle_request(ServerName, PayloadContent),
             case size(NextPacketData) of
                 0 -> ok;
-                _Other -> handle_data(Module, NextPacketData, WebsocketSocket)
+                _Other -> handle_data(ServerName, Module, NextPacketData, WebsocketSocket)
             end
     end.
 

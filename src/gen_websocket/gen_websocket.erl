@@ -17,9 +17,9 @@ listen(Port) ->
     ListenSocket.
 
 
-%% @spec send(WebsocketSocket, Data) -> ok | {error, Reason}
-send(WebsocketSocket, Data) ->
-    websocket_server:send_data({websocket, WebsocketSocket}, Data).
+%% @spec send(ServerName, Data) -> ok | {error, Reason}
+send(ServerName, Data) ->
+    websocket_server:send_data(ServerName, Data).
 
 
 get_header(ServerName) ->
