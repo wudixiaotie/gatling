@@ -3,5 +3,6 @@
 -export ([create/0]).
 
 create() ->
-    <<I:160/integer>> = crypto:hash(sha, term_to_binary({make_ref(), now()})),
+    Base = {node(), make_ref(), now()},
+    <<I:160/integer>> = crypto:hash(sha, term_to_binary(Base)),
     lists:flatten(io_lib:format("~40..0s", [erlang:integer_to_list(I, 16)])).
