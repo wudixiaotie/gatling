@@ -14,11 +14,18 @@
 
 %% APIs
 start(Module, ListenSocket, DispatcherName) ->
-    spawn(fun() -> gen_server:start(?MODULE, [Module, ListenSocket, DispatcherName], []) end).
+    spawn(fun() -> gen_server:start({global, uuid:create()},
+                                    ?MODULE,
+                                    [Module, ListenSocket, DispatcherName],
+                                    []) end).
 
 
-% @spec send_data(WebsocketSocket, Data) -> ok | {stop, Reason}
-send_data(WebsocketSocket, Data) ->
+% @spec send_data({websocket, WebsocketSocket}, Data) -> ok | {stop, Reason}
+send_data({websocket, WebsocketSocket}, Data) ->
+    Frame = build_frame(Data),
+    gen_tcp:send(WebsocketSocket, Frame);
+% @spec send_data({server_name, ServerName}, Data) -> ok | {stop, Reason}
+send_data({server_name, ServerName}, Data) ->
     Frame = build_frame(Data),
     gen_tcp:send(WebsocketSocket, Frame).
 
@@ -38,7 +45,10 @@ init([Module, ListenSocket, DispatcherName]) ->
 
 
 handle_call(get_header, _From, #state{ header_tuple_list = HeaderTupleList } = State) ->
-    {reply, HeaderTupleList, State}.
+    {reply, HeaderTupleList, State};
+handle_call({send_date, Data}, _Form, #state{ websocket_socket = WebsocketSocket } = State) ->
+    Frame = build_frame(Data),
+    gen_tcp:send(WebsocketSocket, Frame).
 
 
 handle_cast(_Msg, State) -> {noreply, State}.
