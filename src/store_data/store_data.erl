@@ -6,7 +6,7 @@
 
 %% @spec handle_request(ServerName, PayloadContent) -> ok | {error, Reason}
 handle_request(ServerName, PayloadContent) ->
-    Header = gen_websocket:get_header(self()),
+    % Header = gen_websocket:get_header(ServerName),
     % io:format("~p~n", [Header]),
-    ok = gen_websocket:send(ServerName, Header),
+    ok = gen_websocket:send(ServerName, PayloadContent),
     ok.

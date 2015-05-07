@@ -10,5 +10,4 @@ application:start(gatling).
 ```
 3.Open gatling/client/gatling.html in browser
 
-then you can see some log in browser's console.
-I only test in chrome, :).
+then you can see some log in browser's console. I only test in chrome, :).

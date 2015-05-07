@@ -10,9 +10,13 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    Port = gatling:get_env(port),
-    ListenSocket = gen_websocket:listen(Port),
-    gatling_sup:start_link(ListenSocket).
+    case gatling:get_env(port) of
+        {ok, Port} ->
+            ListenSocket = gen_websocket:listen(Port),
+            gatling_sup:start_link(ListenSocket);
+        _ ->
+            io:format("You need to define port in src/gatling.app.src.~n")
+    end.
 
 stop(_State) ->
     ok.

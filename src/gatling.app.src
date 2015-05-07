@@ -8,5 +8,5 @@
                   stdlib
                  ]},
   {mod, { gatling_app, []}},
-  {env, [{port, 1987}]}
+  {env, [{port, 1987}, {stop_time, 3600000}]}
  ]}.
