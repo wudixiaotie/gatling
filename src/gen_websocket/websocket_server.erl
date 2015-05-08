@@ -40,6 +40,7 @@ get_header(ServerName) ->
 init([Module, ListenSocket, DispatcherName, ServerName]) ->
     io:format("start an new websocket server:~p~n", [ServerName]),
     {ok, Socket} = gen_tcp:accept(ListenSocket),
+    spawn(fun() -> storage_server:start(ServerName) end),
     dispatcher:create_new_acceptor(DispatcherName),
     State = #state{ websocket_socket = Socket,
                     server_name = ServerName,
@@ -67,7 +68,7 @@ handle_info({tcp, WebsocketSocket, FirstPacket}, #state{server_name = ServerName
                                                         timer_ref = TimerRef} = State) ->
     case erlang:cancel_timer(TimerRef) of
         false ->
-            Reason = lists:flatten(io_lib:format("Server ~p can not cancel the timer!~n", [ServerName])),
+            Reason = gatling:str("Server ~p can not cancel the timer!~n", [ServerName]),
             {stop, Reason, State};
         _ ->
             NewTimerRef = timer_callback(ServerName),
@@ -77,11 +78,11 @@ handle_info({tcp, WebsocketSocket, FirstPacket}, #state{server_name = ServerName
     end;
 handle_info({tcp_closed, WebsocketSocket}, #state{server_name = ServerName,
                                                   websocket_socket = WebsocketSocket} = State) ->
-    stop_tcp_connection(ServerName, WebsocketSocket),
+    before_stop(ServerName, WebsocketSocket),
     {stop, tcp_closed, State};
 handle_info({stop, Reason}, #state{server_name = ServerName,
                                    websocket_socket = WebsocketSocket} = State) ->
-    stop_tcp_connection(ServerName, WebsocketSocket),
+    before_stop(ServerName, WebsocketSocket),
     {stop, Reason, State};
 handle_info(Info, #state{server_name = ServerName} = State) ->
     io:format("websocket_server ~p received non_tcp:~p~n", [ServerName, Info]),
@@ -90,14 +91,15 @@ handle_info(Info, #state{server_name = ServerName} = State) ->
 
 terminate(_Reason, #state{server_name = ServerName,
                           websocket_socket = WebsocketSocket}) ->
-    stop_tcp_connection(ServerName, WebsocketSocket).
+    before_stop(ServerName, WebsocketSocket).
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 
 %% internel functions
-stop_tcp_connection(ServerName, WebsocketSocket) ->
+before_stop(ServerName, WebsocketSocket) ->
     io:format("websocket_server ~p stop!~n", [ServerName]),
-    gen_tcp:close(WebsocketSocket).
+    gen_tcp:close(WebsocketSocket),
+    storage_server:stop(ServerName).
 
 
 
@@ -233,5 +235,5 @@ stop_time() ->
 
 timer_callback(ServerName) ->
     StopTime = stop_time(),
-    Reason = lists:flatten(io_lib:format("Server ~p receive timeout from client!", [ServerName])),
+    Reason = gatling:str("Server ~p receive timeout from client!", [ServerName]),
     erlang:send_after(StopTime, self(), {stop, Reason}).

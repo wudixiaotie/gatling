@@ -35,6 +35,6 @@ var Gatling = {
     }
   },
   record_and_send: function(ws) {
-    ws.send("test");
+    ws.send("this is test");
   }
 }
