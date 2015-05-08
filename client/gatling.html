@@ -1,17 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title></title>
+  <title>Home</title>
   <script type="text/javascript" src="jquery-2.1.3.min.js"></script>
   <script type="text/javascript" src="gatling.js"></script>
   <script type="text/javascript">
     $(function() {
       Gatling.host = "ws://localhost:1987";
-      Gatling.start();
+      // Gatling.start();
+
+      $("#btn_1").on("click", jump_2_page1);
     });
+
+    function jump_2_page1() {
+      $("title").html("Page 1");
+      $("#p_title").html("Page 1");
+      $("#btn_1").html("Home").off().on("click", go_home);
+      window.history.pushState(null, null, "page_1");
+    }
+
+    function go_home() {
+      $("title").html("Home");
+      $("#p_title").html("Home");
+      $("#btn_1").html("Page 1").off().on("click", jump_2_page1);
+      window.history.pushState(null, null, "/");
+    }
   </script>
 </head>
 <body>
-
+  <p id="p_title">Home</p>
+  <button id="btn_1">Page 1</button>
 </body>
 </html>
