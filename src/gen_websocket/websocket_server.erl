@@ -40,7 +40,7 @@ get_header(ServerName) ->
 init([Module, ListenSocket, DispatcherName, ServerName]) ->
     io:format("start an new websocket server:~p~n", [ServerName]),
     {ok, Socket} = gen_tcp:accept(ListenSocket),
-    Module:start_link(get_server_uuid(ServerName),
+    Module:start_link(get_server_uuid(ServerName)),
     dispatcher:create_new_acceptor(DispatcherName),
     State = #state{ websocket_socket = Socket,
                     server_name = ServerName,
@@ -76,34 +76,31 @@ handle_info({tcp, WebsocketSocket, FirstPacket}, #state{server_name = ServerName
             NewState = State#state{timer_ref = NewTimerRef},
             {noreply, NewState}
     end;
-handle_info({tcp_closed, WebsocketSocket}, #state{server_name = ServerName,
-                                                  websocket_socket = WebsocketSocket} = State) ->
-    cleanup(ServerName, WebsocketSocket),
+handle_info({tcp_closed, WebsocketSocket}, #state{websocket_socket = WebsocketSocket} = State) ->
+    cleanup(State),
     {stop, tcp_closed, State};
-handle_info({stop, Reason}, #state{server_name = ServerName,
-                                   websocket_socket = WebsocketSocket} = State) ->
-    cleanup(ServerName, WebsocketSocket),
+handle_info({stop, Reason}, State) ->
+    cleanup(State),
     {stop, Reason, State};
 handle_info(Info, #state{server_name = ServerName} = State) ->
     io:format("websocket_server ~p received non_tcp:~p~n", [ServerName, Info]),
     {noreply, State}.
 
 
-terminate(_Reason, #state{server_name = ServerName,
-                          websocket_socket = WebsocketSocket}) ->
-    cleanup(ServerName, WebsocketSocket).
+terminate(_Reason, State) -> cleanup(State).
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 
 %% internel functions
-cleanup(ServerName, WebsocketSocket) ->
+cleanup(#state{server_name = ServerName,
+               websocket_socket = WebsocketSocket,
+               module = Module}) ->
     io:format("websocket_server ~p stop!~n", [ServerName]),
     gen_tcp:close(WebsocketSocket),
-    % TODO: A high degree of coupling
-    Module:stop(get_server_uuid(ServerName).
+    Module:stop(get_server_uuid(ServerName)).
 
 
-get_server_uuid({ global, {websocket_server, ServerUUID} }) -> ServerUUID
+get_server_uuid({ global, {websocket_server, ServerUUID} }) -> ServerUUID.
 
 
 
