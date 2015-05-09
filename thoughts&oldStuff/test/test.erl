@@ -25,6 +25,7 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 % server function
 start() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+    ServerName = {websocket_server, "asdf"},
+    gen_server:start_link({global, ServerName}, ?MODULE, [], []).
 stop() ->
     gen_server:call(?MODULE, stop).

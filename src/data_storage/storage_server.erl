@@ -2,7 +2,7 @@
 
 -behaviour (gen_server).
 
--export ([start_link/1, handle_request/2]).
+-export ([start_link/1, write/2]).
 
 -export ([init/1, handle_call/3, handle_cast/2, handle_info/2,
           terminate/2, code_change/3]).
@@ -16,12 +16,8 @@ start_link(ServerName) ->
     gen_server:start_link(ServerName, ?MODULE, [ServerName], []).
 
 
-%% @spec handle_request(ServerName, PayloadContent) -> ok | {error, Reason}
-handle_request({global, {websocket_server, ServerUUID} }, PayloadContent) ->
-    % Header = gen_websocket:get_header(ServerName),
-    % io:format("~p~n", [Header]),
-    % ok = gen_websocket:send(ServerName, PayloadContent),
-    gen_server:cast({ global, {storage_server, ServerUUID} }, {write, PayloadContent}).
+write(ServerUUID, Data) ->
+    gen_server:cast({ global, {storage_server, ServerUUID} }, {write, Data}).
 
 
 

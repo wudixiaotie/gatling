@@ -4,7 +4,7 @@
 
 
 start_link(ListenSocket, DispatcherName) ->
-    gen_websocket:start_link(storage_server, ListenSocket, DispatcherName).
+    gen_websocket:start_link(data_storage, ListenSocket, DispatcherName).
 
 
 % @spec get_env(Key) -> Value | undefined
