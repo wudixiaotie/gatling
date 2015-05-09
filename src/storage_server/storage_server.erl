@@ -2,19 +2,18 @@
 
 -behaviour (gen_server).
 
--export ([start/1, stop/1, handle_request/2]).
+-export ([start_link/1, stop/1, handle_request/2]).
 
 -export ([init/1, handle_call/3, handle_cast/2, handle_info/2,
           terminate/2, code_change/3]).
 
+-record (state, {server_name, io_device}).
 
 
-% apis
-start({global, ServerUUID}) ->
-    gen_server:start_link({ global, {ServerUUID, storage_server} },
-                          ?MODULE,
-                          [ServerUUID],
-                          []).
+
+% Apis
+start_link(ServerName) ->
+    gen_server:start_link(ServerName, ?MODULE, [ServerName], []).
 
 
 stop({global, ServerUUID}) ->
@@ -22,7 +21,7 @@ stop({global, ServerUUID}) ->
 
 
 %% @spec handle_request(ServerName, PayloadContent) -> ok | {error, Reason}
-handle_request({global, ServerUUID}, PayloadContent) ->
+handle_request({global, {websocket_server, ServerUUID} }, PayloadContent) ->
     % Header = gen_websocket:get_header(ServerName),
     % io:format("~p~n", [Header]),
     % ok = gen_websocket:send(ServerName, PayloadContent),
@@ -32,14 +31,15 @@ handle_request({global, ServerUUID}, PayloadContent) ->
 
 
 %% gen_server callbacks
-% @spec init([ServerUUID]) -> {ok, IoDevice} | {stop, Reason}
-init([ServerUUID]) ->
+% @spec init([{ global, {storage_server, ServerUUID} } = ServerName]) -> {ok, IoDevice} | {stop, Reason}
+init([{ global, {storage_server, ServerUUID} } = ServerName]) ->
     FileName = string:concat(ServerUUID, ".data"),
     case file:open(FileName, [append]) of
         {error, Reason} ->
             {stop, Reason};
         {ok, IoDevice} ->
-            {ok, [IoDevice]}
+            State = #state{server_name = ServerName, io_device = IoDevice},
+            {ok, State}
     end.
 
 
@@ -47,16 +47,17 @@ handle_call(_Msg, _From, State) -> {reply, _Msg, State}.
 
 
 % @spec handle_cast(_Msg, State) -> {noreply, State} | {stop, normal, []}
-handle_cast({write, Data}, [IoDevice]) ->
+handle_cast({write, Data},
+            #state{server_name = ServerName, io_device = IoDevice} = State) ->
+    io:format("StorageServer: ~p is writting ~p!~n", [ServerName, Data]),
     ok = file:pwrite(IoDevice, eof, string:concat(Data, "\n")),
-    {noreply, [IoDevice]};
-handle_cast(stop, [IoDevice]) ->
-    ok = file:close(IoDevice),
-    {stop, normal, []};
+    {noreply, State};
 handle_cast(_Msg, State) -> {noreply, State}.
 
 
 handle_info(_info, State) -> {noreply, State}.
 % @spec terminate(_Reason, _State) -> ok | {error, Reason}
-terminate(_Reason, [IoDevice]) -> file:close(IoDevice).
+terminate(_Reason, #state{server_name = ServerName, io_device = IoDevice} = State) ->
+    io:format("StorageServer: ~p is stoped!~n", [ServerName]),
+    file:close(IoDevice).
 code_change(_OldVsn, State, _Extraa) -> {ok, State}.

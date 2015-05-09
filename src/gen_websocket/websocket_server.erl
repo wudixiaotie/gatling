@@ -18,7 +18,7 @@
 
 %% APIs
 start(Module, ListenSocket, DispatcherName) ->
-    ServerName = {global, uuid:create()},
+    ServerName = { global, {websocket_server, uuid:create()} },
     spawn(fun() -> gen_server:start(ServerName,
                                     ?MODULE,
                                     [Module, ListenSocket, DispatcherName, ServerName],
@@ -40,7 +40,10 @@ get_header(ServerName) ->
 init([Module, ListenSocket, DispatcherName, ServerName]) ->
     io:format("start an new websocket server:~p~n", [ServerName]),
     {ok, Socket} = gen_tcp:accept(ListenSocket),
-    spawn(fun() -> storage_server:start(ServerName) end),
+    % TODO: A high degree of coupling
+    {global,{websocket_server,ServerUUID}} = ServerName,
+    spawn(fun() -> storage_server:start(ServerUUID) end),
+
     dispatcher:create_new_acceptor(DispatcherName),
     State = #state{ websocket_socket = Socket,
                     server_name = ServerName,
