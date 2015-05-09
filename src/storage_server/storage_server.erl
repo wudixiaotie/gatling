@@ -2,7 +2,7 @@
 
 -behaviour (gen_server).
 
--export ([start_link/1, stop/1, handle_request/2]).
+-export ([start_link/1, handle_request/2]).
 
 -export ([init/1, handle_call/3, handle_cast/2, handle_info/2,
           terminate/2, code_change/3]).
@@ -16,17 +16,12 @@ start_link(ServerName) ->
     gen_server:start_link(ServerName, ?MODULE, [ServerName], []).
 
 
-stop({global, ServerUUID}) ->
-    gen_server:cast({ global, {ServerUUID, storage_server} }, stop).
-
-
 %% @spec handle_request(ServerName, PayloadContent) -> ok | {error, Reason}
 handle_request({global, {websocket_server, ServerUUID} }, PayloadContent) ->
     % Header = gen_websocket:get_header(ServerName),
     % io:format("~p~n", [Header]),
     % ok = gen_websocket:send(ServerName, PayloadContent),
-    gen_server:cast({ global, {ServerUUID, storage_server} },
-                    {write, PayloadContent}).
+    gen_server:cast({ global, {storage_server, ServerUUID} }, {write, PayloadContent}).
 
 
 
@@ -57,7 +52,7 @@ handle_cast(_Msg, State) -> {noreply, State}.
 
 handle_info(_info, State) -> {noreply, State}.
 % @spec terminate(_Reason, _State) -> ok | {error, Reason}
-terminate(_Reason, #state{server_name = ServerName, io_device = IoDevice} = State) ->
+terminate(_Reason, #state{server_name = ServerName, io_device = IoDevice}) ->
     io:format("StorageServer: ~p is stoped!~n", [ServerName]),
     file:close(IoDevice).
 code_change(_OldVsn, State, _Extraa) -> {ok, State}.
