@@ -24,7 +24,12 @@ write(ServerUUID, Data) ->
 %% gen_server callbacks
 % @spec init([{ global, {storage_server, ServerUUID} } = ServerName]) -> {ok, IoDevice} | {stop, Reason}
 init([{ global, {storage_server, ServerUUID} } = ServerName]) ->
-    FileName = string:concat(ServerUUID, ".data"),
+    file:make_dir("./received_data/"),
+    {Year, Month, Day} = erlang:date(),
+    Date = gatling:str("~p_~p_~p", [Year, Month, Day]),
+    FilePath = gatling:str("./received_data/~s/", [Date]),
+    file:make_dir(FilePath),
+    FileName = gatling:str("~s~s.data", [FilePath, ServerUUID]),
     case file:open(FileName, [append]) of
         {error, Reason} ->
             {stop, Reason};
