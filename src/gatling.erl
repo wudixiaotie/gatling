@@ -12,5 +12,5 @@ get_env(Key) ->
     application:get_env(gatling, Key).
 
 
-str(Partten, Args) ->
-    lists:flatten(io_lib:format(Partten, Args)).
+str(Format, Args) ->
+    lists:flatten(io_lib:format(Format, Args)).

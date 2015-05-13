@@ -1,0 +1,45 @@
+{sslsocket,{gen_tcp,#Port<0.1019>,tls_connection}, <0.53.0>}
+
+
+client:
+ssl:start().
+{ok,Socket} = ssl:connect("localhost",1987,[],infinity).
+
+
+server:
+ssl:start(),
+Port = 1987,
+Opts = [binary,
+        {certfile, "../../support/certificate_files/test_ssl_cert.pem"},
+        {keyfile, "../../support/certificate_files/test_ssl_key.pem"},
+        {packet, 0},
+        {reuseaddr, true},
+        {active, true}],
+{ok, SecureListenSocket} = ssl:listen(Port, Opts),
+{ok, SecureSocket} = ssl:transport_accept(SecureListenSocket).
+ssl:ssl_accept(SecureSocket).
+
+
+rr("test.hrl"),
+Port = 1987,
+Opts = [binary,
+        {certfile, "../../support/certificate_files/test_ssl_cert.pem"},
+        {keyfile, "../../support/certificate_files/test_ssl_key.pem"},
+        {packet, 0},
+        {reuseaddr, true},
+        {active, true}],
+{ok, Config} = test:handle_options(Opts, server),
+ConnectionCb = test:connection_cb(Opts),
+#config{transport_info = {Transport, _, _, _}, inet_user = Options, connection_cb = ConnectionCb} = Config,
+{ok, ListenSocket} = Transport:listen(Port, Options),
+{ok, Socket} = Transport:accept(ListenSocket, infinity),
+
+
+
+
+not arp and !(ip.addr == 124.192.145.74) and !(ip.addr == 64.233.191.160) and !(ip.addr == 58.83.212.161) and !(ip.addr == 216.58.221.142) and !(ip.addr == 173.194.72.136) and !(ip.addr == 115.182.63.251) and !(ip.addr == 220.181.155.183) and !(ip.addr == 173.194.72.91) and !(ip.addr == 220.181.153.251) and !(ip.addr == 117.121.54.225)
+
+
+tcp.port == 1987
+
+
