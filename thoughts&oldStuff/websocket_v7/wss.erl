@@ -7,6 +7,8 @@
 
 -include ("test.hrl").
 
+-define (TLS1_0, <<16#00:8, 16#03:8>>).
+
 start() ->
     start(?DEFAULT_PORT).
 
@@ -15,7 +17,9 @@ start(Port) ->
     % register(?MODULE, spawn(fun() -> listen(Port) end)).
     register(?MODULE, spawn(fun() -> listen_ssl4(Port) end)).
 
-
+timestamp() ->
+    {M, S, _} = erlang:now(),
+    M * 1000000 + S.
 listen_ssl4(Port) ->
     io:format("start websocket secure server: wss://localhost:~p~n", [Port]),
     Opts = [binary,
@@ -26,8 +30,20 @@ listen_ssl4(Port) ->
     {ok, Socket} = gen_tcp:accept(ListenSocket),
     receive
         {tcp, Socket, Bin} ->
-            <<ContentType:8, Version:16, Lenght:16, HandshakeProtocol/binary>> = Bin,
-            io:format("ContentType:~p~nVersion:~p~nLenght:~p~n~p~n", [ContentType, Version, Lenght, HandshakeProtocol]);
+            <<ContentType:8, ?TLS1_0, Lenght:16, HandshakeProtocol/binary>> = Bin,
+            % <<ContentType:8, Version:16, Lenght:16, HandshakeProtocol/binary>> = Bin,
+            <<HandshakeType:8, HandshakeLength:24, HandshakeVersion:16,
+              GmtUnixTime:4/binary, RandomBytes:28/binary,
+              SessionIdLength:8, SessionId:SessionIdLength/binary,
+              CipherSuitesLength:16, CipherSuites:CipherSuitesLength/binary,
+              CompressionMethodsLegnth:8, CompressionMethods:CompressionMethodsLegnth/binary,
+              ExtensionsLength:16, Extensions:ExtensionsLength/binary>> = HandshakeProtocol,
+            io:format("ContentType:~p,~nVersion:~p,~nLenght:~p,~nHandshakeType:~p,~nHandshakeLength:~p,~nHandshakeVersion:~p,~nGmtUnixTime:~p,~nRandomBytes:~p,~nSessionIdLength:~p,~nSessionId:~p,~nCipherSuitesLength:~p,~nCipherSuites:~p,~nCompressionMethodsLegnth:~p,~nCompressionMethods:~p,~nExtensionsLength:~p,~nExtensions:~p,~n",
+                      [ContentType, Version, Lenght, HandshakeType,
+                       HandshakeLength, HandshakeVersion, GmtUnixTime, RandomBytes,
+                       SessionIdLength, SessionId, CipherSuitesLength, CipherSuites,
+                       CompressionMethodsLegnth, CompressionMethods, ExtensionsLength,
+                       Extensions]);
         Any ->
             io:format("receive_request received non_tcp: ~p.~n", [Any])
     end.
@@ -115,7 +131,7 @@ listen_ssl2(Port) ->
     CacertFile = "../../support/certificate_files/cacerts.pem",
     CertFile = "../../support/certificate_files/cert.pem",
     KeyFile = "../../support/certificate_files/key.pem",
-    {ok, SSLSocket} = ssl:ssl_accept(Socket,
+    {ok, _SSLSocket} = ssl:ssl_accept(Socket,
                                      [{cacertfile, CacertFile},
                                       {certfile, CertFile},
                                       {keyfile, KeyFile}]).
@@ -134,6 +150,7 @@ shake_hand(Socket) ->
             io:format("receive_request received header = ~p~n", [Bin]),
             HeaderList = binary:split(Bin, <<"\r\n">>, [global]),
             HeaderTupleList =[ list_to_tuple(binary:split(Header, <<": ">>)) || Header <- HeaderList ],
+            SecWebSocketKey = proplists:get_value(<<"Sec-WebSocket-Key">>, HeaderTupleList),
             {_, SecWebSocketKey} = lists:keyfind(<<"Sec-WebSocket-Key">>, 1, HeaderTupleList),
             Sha1 = crypto:hash(sha, [SecWebSocketKey, <<"258EAFA5-E914-47DA-95CA-C5AB0DC85B11">>]),
             Base64 = base64:encode(Sha1),

@@ -31,8 +31,19 @@ init([ListenSocket]) ->
     {ok, {
           {one_for_one, 5, 10},
           [
-            ?CHILD(gen_websocket_worker1, gatling, ListenSocket, worker),
-            ?CHILD(gen_websocket_worker2, gatling, ListenSocket, worker),
-            ?CHILD(gen_websocket_worker3, gatling, ListenSocket, worker)
+            ?CHILD(websocket_dispatcher1, gatling, ListenSocket, worker),
+            ?CHILD(websocket_dispatcher2, gatling, ListenSocket, worker),
+            ?CHILD(websocket_dispatcher3, gatling, ListenSocket, worker)
           ]
          } }.
+
+
+% init([ListenSocket]) ->
+%     {ok, {
+%           {simple_one_for_one, 0, 1},
+%           [
+%             ?CHILD(websocket_dispatcher1, gatling, ListenSocket, worker),
+%             ?CHILD(websocket_dispatcher2, gatling, ListenSocket, worker),
+%             ?CHILD(websocket_dispatcher3, gatling, ListenSocket, worker)
+%           ]
+%          } }.

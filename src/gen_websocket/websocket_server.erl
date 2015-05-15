@@ -112,7 +112,7 @@ shake_hand(#state{server_name = ServerName, websocket_socket = Socket} = State) 
             io:format("request header = ~p~n", [Bin]),
             HeaderList = binary:split(Bin, <<"\r\n">>, [global]),
             HeaderTupleList = [ list_to_tuple(binary:split(Header, <<": ">>)) || Header <- HeaderList ],
-            {_, SecWebSocketKey} = lists:keyfind(<<"Sec-WebSocket-Key">>, 1, HeaderTupleList),
+            SecWebSocketKey = proplists:get_value(<<"Sec-WebSocket-Key">>, HeaderTupleList),
             Sha1 = crypto:hash(sha, [SecWebSocketKey, <<"258EAFA5-E914-47DA-95CA-C5AB0DC85B11">>]),
             Base64 = base64:encode(Sha1),
             HandshakeHeader = [

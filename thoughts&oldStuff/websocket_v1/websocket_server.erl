@@ -1,4 +1,4 @@
--module (websocket_server1).
+-module (websocket_server).
 
 -export ([start/0, start/1, stop/0]).
 
