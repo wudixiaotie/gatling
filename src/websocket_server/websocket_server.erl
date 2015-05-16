@@ -2,7 +2,7 @@
 
 -behaviour (gen_server).
 
--export ([start/3, send_data/2, get_header/1]).
+-export ([start_link/2, send_data/2, get_header/1]).
 
 -export ([init/1, handle_call/3, handle_cast/2, handle_info/2,
           terminate/2, code_change/3]).
@@ -17,12 +17,10 @@
 
 
 %% APIs
-start(Module, ListenSocket, DispatcherName) ->
+start_link(ListenSocket, Module) ->
     ServerName = { global, {websocket_server, uuid:create()} },
-    spawn(fun() -> gen_server:start(ServerName,
-                                    ?MODULE,
-                                    [Module, ListenSocket, DispatcherName, ServerName],
-                                    []) end).
+    State = #state{ server_name = ServerName, module = Module },
+    gen_server:start_link(ServerName, ?MODULE, [ListenSocket, State], []).
 
 
 % @spec send_data(ServerName, Data) -> ok | {stop, Reason}
@@ -36,16 +34,14 @@ get_header(ServerName) ->
 
 
 %% gen_server callbacks
-% init([Module, ListenSocket, DispatcherName]) -> {ok, State} | {stop, atom}
-init([Module, ListenSocket, DispatcherName, ServerName]) ->
+% init(ListenSocket, State) -> {ok, State} | {stop, atom}
+init([ListenSocket, #state{ server_name = ServerName, module = Module } = State]) ->
+    {ok, WebsocketSocket} = gen_tcp:accept(ListenSocket),
+    spawn(fun() -> supervisor:start_child(ws_sup, []) end),
     io:format("start an new websocket server:~p~n", [ServerName]),
-    {ok, Socket} = gen_tcp:accept(ListenSocket),
+    NewState = State#state{ websocket_socket = WebsocketSocket },
     Module:start_link(get_server_uuid(ServerName)),
-    dispatcher:create_new_acceptor(DispatcherName),
-    State = #state{ websocket_socket = Socket,
-                    server_name = ServerName,
-                    module = Module },
-    shake_hand(State).
+    shake_hand(NewState).
 
 
 handle_call(get_header, _From, #state{header_tuple_list = HeaderTupleList} = State) ->
@@ -68,7 +64,7 @@ handle_info({tcp, WebsocketSocket, FirstPacket}, #state{server_name = ServerName
                                                         timer_ref = TimerRef} = State) ->
     case erlang:cancel_timer(TimerRef) of
         false ->
-            Reason = gatling:str("Server ~p can not cancel the timer!~n", [ServerName]),
+            Reason = str:format("Server ~p can not cancel the timer!~n", [ServerName]),
             {stop, Reason, State};
         _ ->
             NewTimerRef = timer_callback(ServerName),
@@ -106,9 +102,9 @@ get_server_uuid({ global, {websocket_server, ServerUUID} }) -> ServerUUID.
 
 %% websocket protocol
 % shake_hand(State) -> {ok, State} | {stop, atom}
-shake_hand(#state{server_name = ServerName, websocket_socket = Socket} = State) ->
+shake_hand(#state{server_name = ServerName, websocket_socket = WebsocketSocket} = State) ->
     receive
-        {tcp, Socket, Bin} ->
+        {tcp, WebsocketSocket, Bin} ->
             io:format("request header = ~p~n", [Bin]),
             HeaderList = binary:split(Bin, <<"\r\n">>, [global]),
             HeaderTupleList = [ list_to_tuple(binary:split(Header, <<": ">>)) || Header <- HeaderList ],
@@ -122,7 +118,7 @@ shake_hand(#state{server_name = ServerName, websocket_socket = Socket} = State) 
                 <<"Sec-WebSocket-Accept: ">>, Base64, <<"\r\n">>,
                 <<"\r\n">>
             ],
-            ok = gen_tcp:send(Socket, HandshakeHeader),
+            ok = gen_tcp:send(WebsocketSocket, HandshakeHeader),
             TimerRef = timer_callback(ServerName),
             NewState = State#state{header_tuple_list = HeaderTupleList,
                                    timer_ref = TimerRef},
@@ -228,7 +224,7 @@ build_frame(Content) ->
 
 %% Timers
 stop_time() ->
-    case gatling:get_env(stop_time) of
+    case env:get(stop_time) of
         {ok, StopTime} -> StopTime;
         _ -> 3600000
     end.
@@ -236,5 +232,5 @@ stop_time() ->
 
 timer_callback(ServerName) ->
     StopTime = stop_time(),
-    Reason = gatling:str("Server ~p receive timeout from client!", [ServerName]),
+    Reason = str:format("Server ~p receive timeout from client!", [ServerName]),
     erlang:send_after(StopTime, self(), {stop, Reason}).

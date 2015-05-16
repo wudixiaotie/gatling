@@ -7,8 +7,15 @@
 -export ([init/1, handle_call/3, handle_cast/2, handle_info/2,
           terminate/2, code_change/3]).
 
-init([]) -> {ok, []}.
-handle_call(_Msg, _From, State) -> {reply, _Msg, State}.
+init([]) ->
+    io:format("init:~p~n", [self()]),
+    receive
+        _ -> ok
+    end,
+    {ok, []}.
+handle_call(_Msg, _From, State) ->
+    io:format("handle_call:~p~n", [self()]),
+    {reply, _Msg, State}.
 handle_cast(_Msg, State) -> {noreply, State}.
 handle_info(stop, State) ->
     io:format("========got message!~p~n", [stop]),
@@ -25,6 +32,7 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 % server function
 start() ->
+    io:format("start_link:~p~n", [self()]),
     ServerName = {websocket_server, "asdf"},
     gen_server:start_link({global, ServerName}, ?MODULE, [], []).
 stop() ->

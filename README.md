@@ -9,7 +9,7 @@ erl
 ```
 * 2.start application
 ```erlang
-application:start(gatling).
+gatling:start().
 ```
 * 3.Open gatling/client/gatling.html in browser
 

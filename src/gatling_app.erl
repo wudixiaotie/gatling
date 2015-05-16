@@ -10,12 +10,18 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    case gatling:get_env(port) of
+    case env:get(port) of
         {ok, Port} ->
-            ListenSocket = gen_websocket:listen(Port),
+            io:format("start websocket server: ws://localhost:~p~n", [Port]),
+            Opts = [binary,
+                    {packet, 0},
+                    {reuseaddr, true},
+                    {active, true}],
+            {ok, ListenSocket} = gen_tcp:listen(Port, Opts),
             gatling_sup:start_link(ListenSocket);
         _ ->
-            io:format("You need to define port in src/gatling.app.src.~n")
+            io:format("You need to define port in src/gatling.app.src.~n"),
+            {stop, undefine_port}
     end.
 
 stop(_State) ->

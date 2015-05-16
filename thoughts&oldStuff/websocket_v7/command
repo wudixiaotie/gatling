@@ -42,4 +42,11 @@ not arp and !(ip.addr == 124.192.145.74) and !(ip.addr == 64.233.191.160) and !(
 
 tcp.port == 1987
 
-
+Port = 1987,
+Opts = [binary,
+    {packet, 0},
+    {reuseaddr, true},
+    {active, true}],
+{ok, ListenSocket} = gen_tcp:listen(Port, Opts),
+{ok, Socket} = gen_tcp:accept(ListenSocket).
+websocket_server:start_link(Socket,data_storage).

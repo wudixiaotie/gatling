@@ -1,5 +1,4 @@
-
--module(gatling_sup).
+-module (ws_sup).
 
 -behaviour(supervisor).
 
@@ -8,6 +7,9 @@
 
 %% Supervisor callbacks
 -export([init/1]).
+
+%% Helper macro for declaring children of supervisor
+-define(CHILD(Mod, Args), {Mod, {Mod, start_link, Args}, temporary, brutal_kill, worker, [Mod]}).
 
 %% ===================================================================
 %% API functions
@@ -21,9 +23,11 @@ start_link(ListenSocket) ->
 %% ===================================================================
 
 init([ListenSocket]) ->
-    {ok, {
-          {one_for_one, 5, 10},
-          [
-            {ws_sup, {ws_sup, start_link, [ListenSocket]}, permanent, 5000, supervisor, [ws_sup]}
-          ]
-         } }.
+    case env:get(module) of
+        {ok, Module} ->
+            {ok, { {simple_one_for_one, 0, 1},
+                   [?CHILD(websocket_server, [ListenSocket, Module])] } };
+        _ ->
+            io:format("You need to define callback module in src/gatling.app.src.~n"),
+            ignore
+    end.

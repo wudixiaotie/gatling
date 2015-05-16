@@ -26,10 +26,10 @@ write(ServerUUID, Data) ->
 init([{ global, {storage_server, ServerUUID} } = ServerName]) ->
     file:make_dir("./received_data/"),
     {Year, Month, Day} = erlang:date(),
-    Date = gatling:str("~p_~p_~p", [Year, Month, Day]),
-    FilePath = gatling:str("./received_data/~s/", [Date]),
+    Date = str:format("~p_~p_~p", [Year, Month, Day]),
+    FilePath = str:format("./received_data/~s/", [Date]),
     file:make_dir(FilePath),
-    FileName = gatling:str("~s~s.data", [FilePath, ServerUUID]),
+    FileName = str:format("~s~s.data", [FilePath, ServerUUID]),
     case file:open(FileName, [append]) of
         {error, Reason} ->
             {stop, Reason};
