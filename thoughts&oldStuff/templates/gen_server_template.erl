@@ -8,15 +8,17 @@
           terminate/2, code_change/3]).
 
 
-init([]) -> {ok, []}.
-handle_call(_Msg, _From, State) -> {reply, _Msg, State}.
-handle_cast(_Msg, State) -> {noreply, State}.
-handle_info(_info, State) -> {noreply, State}.
-terminate(_Reason, _State) -> ok.
-code_change(_OldVsn, State, _Extra) -> {ok, State}.
+init ([]) ->
+    State = [],
+    {ok, State}.
+handle_call (_Msg, _From, State) -> {reply, _Msg, State}.
+handle_cast (_Msg, State) -> {noreply, State}.
+handle_info (_Info, State) -> {noreply, State}.
+terminate (_Reason, _State) -> ok.
+code_change (_OldVsn, State, _Extra) -> {ok, State}.
 
 % server function
-start_link() ->
+start_link () ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
-stop() ->
+stop () ->
     gen_server:cast(?MODULE, stop).

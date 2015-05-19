@@ -4,5 +4,8 @@
 
 
 % @spec get(Key) -> Value | undefined
-get(Key) ->
-    application:get_env(gatling, Key).
+get (Key) ->
+    case application:get_env (gatling, Key) of
+        {ok, Value} -> Value;
+        undefined -> undefined
+    end.
