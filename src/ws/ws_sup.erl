@@ -23,5 +23,4 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    % Module = env:get(module)
     {ok, { {simple_one_for_one, 0, 1}, [?CHILD(ws, [])] } }.

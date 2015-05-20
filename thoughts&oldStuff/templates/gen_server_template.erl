@@ -11,7 +11,7 @@
 init ([]) ->
     State = [],
     {ok, State}.
-handle_call (_Msg, _From, State) -> {reply, _Msg, State}.
+handle_call (Msg, _From, State) -> {reply, Msg, State}.
 handle_cast (_Msg, State) -> {noreply, State}.
 handle_info (_Info, State) -> {noreply, State}.
 terminate (_Reason, _State) -> ok.
