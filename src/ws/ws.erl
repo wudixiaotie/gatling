@@ -15,8 +15,8 @@
                  unfinished_data = <<>>,
                  data_length = 0,
                  header_tuple_list,
-                 module,
                  timer_ref}).
+
 
 
 
@@ -47,6 +47,7 @@ send(Uuid, Data) ->
 
 init ([State]) ->
     inet:setopts (State#state.ws_socket, [{active, once}, {packet, 0}, binary]),
+    ws_callback:init (State#state.uuid),
     {ok, State}.
 
 
@@ -175,8 +176,8 @@ setopts (WsSwocket) ->
 
 cleanup (Uuid, WsSocket) ->
     io:format ("Server ~p stop!~n", [Uuid]),
-    gen_tcp:close (WsSocket).
-    % Module:stop(Uuid).
+    gen_tcp:close (WsSocket),
+    ws_callback:stop (Uuid).
 
 
 handle_data (PayloadData, Uuid) ->
@@ -186,9 +187,7 @@ handle_data (PayloadData, Uuid) ->
             io:format ("Server ~p can't decode data~n", [Uuid]);
         PayloadContent ->
             io:format ("Server ~p received data: ~p~n", [Uuid, PayloadContent]),
-            % spawn (fun () -> send_data (Uuid, PayloadContent) end)
-            send (Uuid, PayloadContent)
-            % Module:handle_request(Uuid, PayloadContent)
+            ws_callback:handle_request (Uuid, PayloadContent)
     end.
 
 
@@ -236,7 +235,6 @@ build_frame (DataLength, Bin) when DataLength >= 125, DataLength =< 65535 ->
     <<1:1, 0:3, 1:4, 0:1, 126:7, DataLength:16, Bin/binary>>;
 build_frame (DataLength, Bin) when DataLength > 65535 ->
     <<1:1, 0:3, 1:4, 0:1, 127:7, DataLength:64, Bin/binary>>.
-
 
 
 %% Timers
