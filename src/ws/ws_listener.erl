@@ -52,7 +52,9 @@ handle_info ({inet_async, ListenSocket, AcceptorRef, {ok, ClientSocket}},
             gen_tcp:controlling_process (ClientSocket, Pid),
             case prim_inet:async_accept (ListenSocket, -1) of
                 {ok,    NewAcceptorRef} -> ok;
-                {error, NewAcceptorRef} -> exit ({async_accept, inet:format_error (NewAcceptorRef)})
+                {error, NewAcceptorRef} ->
+                    io:format("status:now() => ~p~n", [status:now()]),
+                    exit ({async_accept, inet:format_error (NewAcceptorRef)})
             end,
             NewState = State#state{acceptor_ref = NewAcceptorRef},
             {noreply, NewState};

@@ -4,7 +4,9 @@
 
 
 % callback during websocket server starting
-init (Uuid) -> ok.
+init (Uuid) ->
+    status:add (),
+    ok.
 
 
 % callback after websocket server received data
@@ -13,4 +15,6 @@ handle_request (Uuid, Data) ->
 
 
 % callback during websocket server stopping
-stop (Uuid) -> ok.
+stop (Uuid) ->
+    status:remove (),
+    ok.

@@ -1,12 +1,20 @@
 -module (test).
 
 
--compile (export_all).
+-export ([start/1]).
+
+start (Max) ->
+    loop (0, Max).
 
 
-loop (State) ->
+loop (Count, Max) ->
+    case Count > Max of
+        true -> ok;
+        false ->
+            spawn (fun () -> client:start () end),
+            erlang:send_after (200, self(), go)
+    end,
     receive
-        Any ->
-            io:format("hello, ~p, State:~p~n", [Any, State]),
-            loop (State)
+        _ -> loop (Count + 1, Max)
+    after 5 * 1000 -> ok
     end.

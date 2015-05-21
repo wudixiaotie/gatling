@@ -30,6 +30,12 @@ init ([]) ->
              5000,
              worker,
              [ws_listener]},
+            {status,
+             {status, start_link, []},
+             permanent,
+             5000,
+             worker,
+             [status]},
             {ws_sup, {ws_sup, start_link, []}, permanent, 5000, supervisor, [ws_sup]}
           ]
          } }.

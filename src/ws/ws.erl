@@ -76,7 +76,7 @@ handle_cast (_Msg, State) -> {noreply, State}.
 % shake hand
 handle_info ({tcp, WsSwocket, Bin}, #state{ws_socket = WsSwocket} = State)
     when State#state.ws_state =:= shake_hand ->
-    io:format ("request header = ~p~n", [Bin]),
+    % io:format ("request header = ~p~n", [Bin]),
     HeaderList = binary:split (Bin, <<"\r\n">>, [global]),
     HeaderTupleList = [list_to_tuple (binary:split (Header, <<": ">>)) || Header <- HeaderList],
     erlang:put (header, HeaderTupleList),
@@ -95,7 +95,6 @@ handle_info ({tcp, WsSwocket, Bin}, #state{ws_socket = WsSwocket} = State)
     NewState = State#state{ws_state = ready,
                            timer_ref = TimerRef},
     ws_callback:init (State#state.uuid),
-    % setopts (NewState#state.ws_socket),
     {noreply, NewState};
 % ready to receive message
 handle_info ({tcp, WsSwocket, Bin}, #state{ws_socket = WsSwocket} = State)
@@ -126,7 +125,6 @@ handle_info ({tcp, WsSwocket, Bin}, #state{ws_socket = WsSwocket} = State)
                     handle_data (RestData, Uuid)
             end,
 
-            % setopts (NewState#state.ws_socket),
             {noreply, NewState}
     end;
 % message is to large need more than one tcp package
@@ -151,7 +149,6 @@ handle_info ({tcp, WsSwocket, Bin}, #state{ws_socket = WsSwocket} = State)
                     handle_data (ReceivedData, Uuid)
             end,
 
-            % setopts (NewState#state.ws_socket),
             {noreply, NewState}
     end;
 % tcp connection change to passive
@@ -160,17 +157,18 @@ handle_info ({tcp_passive, WsSwocket}, #state{ws_socket = WsSwocket} = State) ->
     {noreply, State};
 % connection closed
 handle_info ({tcp_closed, WsSwocket}, #state{ws_socket = WsSwocket} = State) ->
-    cleanup (State#state.uuid, WsSwocket),
     {stop, tcp_closed, State};
 % after shake hand
 handle_info (Info, State) ->
-    % setopts (State#state.ws_socket),
     io:format("request received non_tcp: ~p.~n", [Info]),
     {noreply, State}.
 
 
 terminate (_Reason, State) ->
-    cleanup (State#state.uuid, State#state.ws_socket),
+    Uuid = State#state.uuid,
+    io:format ("Server ~p stop!~n", [Uuid]),
+    gen_tcp:close (State#state.ws_socket),
+    ws_callback:stop (Uuid),
     ok.
 code_change (_OldVsn, State, _Extra) -> {ok, State}.
 
@@ -184,12 +182,6 @@ code_change (_OldVsn, State, _Extra) -> {ok, State}.
 
 setopts (WsSwocket) ->
     inet:setopts (WsSwocket, [{active, 300}, {packet, 0}, binary]).
-
-
-cleanup (Uuid, WsSocket) ->
-    io:format ("Server ~p stop!~n", [Uuid]),
-    gen_tcp:close (WsSocket),
-    ws_callback:stop (Uuid).
 
 
 handle_data (PayloadData, Uuid) ->
