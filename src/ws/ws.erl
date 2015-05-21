@@ -3,7 +3,7 @@
 -behaviour (gen_server).
 
 % APIs
--export ([start_link/1, send/2]).
+-export ([start_link/1, send/2, get_header/1]).
 
 % gen_server callbacks
 -export ([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -12,9 +12,6 @@
 -record (state, {uuid,
                  ws_socket,
                  ws_state, % shake_hand, ready, unfinished
-                 unfinished_data = <<>>,
-                 data_length = 0,
-                 header_tuple_list,
                  timer_ref}).
 
 
@@ -33,9 +30,14 @@ start_link (WsSwocket) ->
     gen_server:start_link ({global, {ws, Uuid}}, ?MODULE, [State], []).
 
 
-% @spec send_data(Uuid, Data) -> ok | {stop, Reason}
-send(Uuid, Data) ->
-    gen_server:cast (server_name (Uuid), {send_data, Data}).
+% @spec send(Uuid, Data) -> ok | {stop, Reason}
+send (Uuid, Data) ->
+    gen_server:cast (server_name (Uuid), {send, Data}).
+
+
+get_header (Uuid) ->
+    gen_server:call (server_name (Uuid), get_header).
+
 
 
 
@@ -50,10 +52,13 @@ init ([State]) ->
     {ok, State}.
 
 
+handle_call (get_header, _From, State) ->
+    Header = erlang:get (header),
+    {reply, Header, State};
 handle_call (Msg, _From, State) -> {reply, Msg, State}.
 
 
-handle_cast ({send_data, Data}, #state{ws_socket = WsSwocket} = State) ->
+handle_cast ({send, Data}, #state{ws_socket = WsSwocket} = State) ->
     Frame = build_frame (Data),
     case gen_tcp:send (WsSwocket, Frame) of
         ok ->
@@ -74,6 +79,7 @@ handle_info ({tcp, WsSwocket, Bin}, #state{ws_socket = WsSwocket} = State)
     io:format ("request header = ~p~n", [Bin]),
     HeaderList = binary:split (Bin, <<"\r\n">>, [global]),
     HeaderTupleList = [list_to_tuple (binary:split (Header, <<": ">>)) || Header <- HeaderList],
+    erlang:put (header, HeaderTupleList),
     SecWebSocketKey = proplists:get_value (<<"Sec-WebSocket-Key">>, HeaderTupleList),
     Sha = crypto:hash (sha, [SecWebSocketKey, <<"258EAFA5-E914-47DA-95CA-C5AB0DC85B11">>]),
     Base64 = base64:encode (Sha),
@@ -87,7 +93,6 @@ handle_info ({tcp, WsSwocket, Bin}, #state{ws_socket = WsSwocket} = State)
     ok = gen_tcp:send (WsSwocket, HandshakeHeader),
     TimerRef = timer_callback (),
     NewState = State#state{ws_state = ready,
-                           header_tuple_list = HeaderTupleList,
                            timer_ref = TimerRef},
     ws_callback:init (State#state.uuid),
     % setopts (NewState#state.ws_socket),
@@ -113,9 +118,9 @@ handle_info ({tcp, WsSwocket, Bin}, #state{ws_socket = WsSwocket} = State)
             case PayloadLength > size(RestData) of
                 true ->
                     NewState = State#state{ws_state = unfinished,
-                                           unfinished_data = RestData,
-                                           data_length = PayloadLength,
-                                           timer_ref = NewTimerRef};
+                                           timer_ref = NewTimerRef},
+                    erlang:put (data_length, PayloadLength),
+                    erlang:put (unfinished_data, RestData);
                 false ->
                     NewState = State#state{timer_ref = NewTimerRef},
                     handle_data (RestData, Uuid)
@@ -127,22 +132,22 @@ handle_info ({tcp, WsSwocket, Bin}, #state{ws_socket = WsSwocket} = State)
 % message is to large need more than one tcp package
 handle_info ({tcp, WsSwocket, Bin}, #state{ws_socket = WsSwocket} = State)
     when State#state.ws_state =:= unfinished ->
-    #state{uuid = Uuid, data_length = DataLength, timer_ref = TimerRef} = State,
+    #state{uuid = Uuid, timer_ref = TimerRef} = State,
     case reset_timer (TimerRef) of
         {error, Reason} ->
             {stop, Reason, State};
         {ok, NewTimerRef} ->
             % masking length is 4
-            ReceivedData = list_to_binary([State#state.unfinished_data, Bin]),
-            case DataLength + 4 - size(ReceivedData) > 0  of
+            ReceivedData = list_to_binary([erlang:get (unfinished_data), Bin]),
+            case erlang:get (data_length) + 4 - size(ReceivedData) > 0  of
                 true ->
-                    NewState = State#state{unfinished_data = ReceivedData,
-                                           timer_ref = NewTimerRef};
+                    NewState = State#state{timer_ref = NewTimerRef},
+                    erlang:put (unfinished_data, ReceivedData);
                 false ->
                     NewState = State#state{ws_state = ready,
-                                           unfinished_data = <<>>,
-                                           data_length = 0,
                                            timer_ref = NewTimerRef},
+                    erlang:put (data_length, 0),
+                    erlang:put (unfinished_data, <<>>),
                     handle_data (ReceivedData, Uuid)
             end,
 
@@ -158,9 +163,9 @@ handle_info ({tcp_closed, WsSwocket}, #state{ws_socket = WsSwocket} = State) ->
     cleanup (State#state.uuid, WsSwocket),
     {stop, tcp_closed, State};
 % after shake hand
-handle_info (_Info, State) ->
+handle_info (Info, State) ->
     % setopts (State#state.ws_socket),
-    io:format("request received non_tcp: ~p.~n", [_Info]),
+    io:format("request received non_tcp: ~p.~n", [Info]),
     {noreply, State}.
 
 
@@ -264,5 +269,5 @@ timer_callback () ->
 stop_time () ->
     case env:get (stop_time) of
         {ok, StopTime} -> StopTime;
-        _ -> 3600000
+        _ -> 1 * 60 * 60 * 1000
     end.
