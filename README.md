@@ -1,5 +1,5 @@
 # gatling
-## web socket server
+## erlang websocket server
 ### how it works
 -------
 * 1.Open a terminal and go to gatling direction(my was in ~/Documents/code/gatling/), and type:
