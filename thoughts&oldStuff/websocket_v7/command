@@ -49,4 +49,9 @@ Opts = [binary,
     {active, true}],
 {ok, ListenSocket} = gen_tcp:listen(Port, Opts),
 {ok, Socket} = gen_tcp:accept(ListenSocket).
+
 websocket_server:start_link(Socket,data_storage).
+
+
+
+{ok,S} = gen_tcp:connect({127,0,0,1},1987,[{packet,2}]).

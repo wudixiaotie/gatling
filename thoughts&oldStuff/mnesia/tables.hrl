@@ -1,0 +1,3 @@
+-record(users, {id, name, email, password}).
+-record(tips, {id, url, content, date}).
+-record(abuse, {user_id, visit_times}).
