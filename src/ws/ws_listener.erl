@@ -30,7 +30,7 @@ init ([]) ->
             {packet, 0},
             {reuseaddr, true},
             {keepalive, true},
-            {backlog, 30},
+            {backlog, 300},
             {active, false}],
     {ok, ListenSocket} = gen_tcp:listen (Port, Opts),
     {ok, AcceptorRef} = prim_inet:async_accept (ListenSocket, -1),

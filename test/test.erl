@@ -11,7 +11,7 @@ loop (Count, Max) ->
     case Count > Max of
         true -> stop;
         false ->
-            spawn (fun () -> client:start () end),
+            spawn (fun () -> client:start (Count) end),
             erlang:send_after (200, self(), go)
     end,
     receive

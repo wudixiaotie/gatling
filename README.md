@@ -24,6 +24,14 @@ it shows max port limit of your computer, you can add +Q behind 'erl' like:
 erl +Q 100000
 ```
 to change it.
+####3.computer port range:
+if you don't need stress test then you can skip this step.  
+```shell
+su  
+echo "1024 65535" > /proc/sys/net/ipv4/ip_local_port_range  
+cat /proc/sys/net/ipv4/ip_local_port_range  
+```
+
 ### how it works
 -------
 #### 1.Open a terminal and go to gatling direction(my was in ~/Documents/code/gatling/), and type:

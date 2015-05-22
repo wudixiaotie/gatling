@@ -25,7 +25,7 @@
 % server function
 start_link (WsSwocket) ->
     Uuid = uuid:create (),
-    io:format ("start an new websocket server:~p~n", [Uuid]),
+    % io:format ("start an new websocket server:~p~n", [Uuid]),
     State = #state{uuid = Uuid, ws_socket = WsSwocket, ws_state = shake_hand},
     gen_server:start_link ({global, {ws, Uuid}}, ?MODULE, [State], []).
 
