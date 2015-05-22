@@ -9,12 +9,12 @@ start (Max) ->
 
 loop (Count, Max) ->
     case Count > Max of
-        true -> ok;
+        true -> stop;
         false ->
             spawn (fun () -> client:start () end),
             erlang:send_after (200, self(), go)
     end,
     receive
         _ -> loop (Count + 1, Max)
-    after 5 * 1000 -> ok
+    after 5 * 1000 -> stop
     end.
