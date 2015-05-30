@@ -25,17 +25,10 @@ init ([]) ->
           {one_for_one, 5, 10},
           [
             {ws_listener,
-             {ws_listener, start_link, []},
-             permanent,
-             5000,
-             worker,
-             [ws_listener]},
+             {ws_listener, start_link, []}, permanent, 5000, worker, [ws_listener]},
             {status,
-             {status, start_link, []},
-             permanent,
-             5000,
-             worker,
-             [status]},
-            {ws_sup, {ws_sup, start_link, []}, permanent, 5000, supervisor, [ws_sup]}
+             {status, start_link, []}, permanent, 5000, worker, [status]},
+            {ws_sup,
+             {ws_sup, start_link, []}, permanent, 5000, supervisor, [ws_sup]}
           ]
          } }.

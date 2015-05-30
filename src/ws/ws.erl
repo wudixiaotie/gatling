@@ -190,7 +190,7 @@ handle_data (PayloadData, Uuid) ->
         {incomplete, _, _} ->
             io:format ("Server ~p can't decode data~n", [Uuid]);
         PayloadContent ->
-            io:format ("Server ~p received data: ~p~n", [Uuid, PayloadContent]),
+            % io:format ("Server ~p received data: ~p~n", [Uuid, PayloadContent]),
             ws_callback:handle_request (Uuid, PayloadContent)
     end.
 
@@ -243,19 +243,27 @@ build_frame (DataLength, Bin) when DataLength > 65535 ->
 
 %% Timers
 reset_timer (TimerRef) ->
-    case erlang:cancel_timer (TimerRef) of
-        false ->
-            Reason = str:format ("Server can not cancel the timer!~n"),
-            {error, Reason};
-        _ ->
-            NewTimerRef = timer_callback (),
-            {ok, NewTimerRef}
+    case TimerRef of
+        none -> {ok, none};
+        TimerRef ->
+            case erlang:cancel_timer (TimerRef) of
+                false ->
+                    Reason = str:format ("Server can not cancel the timer!~n"),
+                    {error, Reason};
+                _ ->
+                    NewTimerRef = timer_callback (),
+                    {ok, NewTimerRef}
+            end
     end.
 
 
 timer_callback () ->
-    Reason = str:format ("Server receive timeout from client!"),
-    erlang:send_after (stop_time (), self (), {stop, Reason}).
+    case stop_time () of
+        none -> none;
+        StopTime ->
+            Reason = str:format ("Server receive timeout from client!"),
+            erlang:send_after (StopTime, self (), {stop, Reason})
+    end.
 
 
 stop_time () ->

@@ -1,39 +1,22 @@
--module (ws_listener).
+-module (ws_acceptor).
 
 -behaviour (gen_server).
 
--export ([start_link/0]).
+-export ([start_link/1]).
 
 -export ([init/1, handle_call/3, handle_cast/2, handle_info/2,
           terminate/2, code_change/3]).
 
 -record (state, {listen_socket, acceptor_ref}).
 
-% default port
--define (PORT, 1987).
-
 
 % server function
-start_link () ->
-    gen_server:start_link ({local, ?MODULE}, ?MODULE, [], []).
+start_link (ListenSocket) ->
+    gen_server:start_link (?MODULE, [ListenSocket], []).
 
 
 
-init ([]) ->
-    case env:get(port) of
-        undefined ->
-            Port = ?PORT;
-        Port ->
-            ok
-    end,
-    io:format ("start listen port: ~p~n", [Port]),
-    Opts = [binary,
-            {packet, 0},
-            {reuseaddr, true},
-            {keepalive, true},
-            {backlog, 30000},
-            {active, false}],
-    {ok, ListenSocket} = gen_tcp:listen (Port, Opts),
+init ([ListenSocket]) ->
     {ok, AcceptorRef} = prim_inet:async_accept (ListenSocket, -1),
     State = #state{listen_socket = ListenSocket, acceptor_ref = AcceptorRef},
     {ok, State}.
@@ -45,6 +28,7 @@ handle_cast (_Msg, State) -> {noreply, State}.
 
 handle_info ({inet_async, ListenSocket, AcceptorRef, {ok, ClientSocket}},
              #state{listen_socket = ListenSocket, acceptor_ref = AcceptorRef} = State) ->
+    true = inet_db:register_socket (ClientSocket, inet_tcp),
     case set_sockopt (State#state.listen_socket, ClientSocket) of
         ok ->
             {ok, Pid} = supervisor:start_child(ws_sup, [ClientSocket]),
